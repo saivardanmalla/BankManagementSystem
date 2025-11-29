@@ -1,0 +1,172 @@
+package Vardhan;
+import java.io.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+class Account {
+    String username, password, accNumber;
+    double balance;
+    public Account(String username, String password, String accNumber, double balance) {
+        this.username = username;
+        this.password = password;
+        this.accNumber = accNumber;
+        this.balance = balance;
+    }
+
+    public String toFileString() {
+        return username + "," + password + "," + accNumber + "," + balance;
+    }
+}
+
+public class bankingApplication {
+    static final String FILE_NAME = "accounts.txt";
+    static ArrayList<Account> accounts = new ArrayList<>();
+    static Scanner sc = new Scanner(System.in);
+    static Account currentUser = null;
+
+    public static void main(String[] args) {
+        loadAccountsFromFile();
+
+        while (true) {
+            System.out.println("\n--- Welcome to Advanced Banking App ---");
+            System.out.println("1. Register");
+            System.out.println("2. Login");
+            System.out.println("3. Exit");
+            System.out.print("Choose option: ");
+            int ch = sc.nextInt();
+            sc.nextLine(); // consume newline
+
+            switch (ch) {
+                case 1 -> registerUser();
+                case 2 -> loginUser();
+                case 3 -> {
+                    System.out.println("Exiting...");
+                    saveAccountsToFile();
+                    System.exit(0);
+                }
+                default -> System.out.println("Invalid choice!");
+            }
+        }
+    }
+
+    static void registerUser() {
+        System.out.print("Enter username: ");
+        String uname = sc.nextLine();
+
+        System.out.print("Enter password: ");
+        String pass = sc.nextLine();
+
+        System.out.print("Enter your Date of Birth (yyyy-MM-dd): ");
+        String dobInput = sc.nextLine();
+
+        LocalDate dob;
+        try {
+            dob = LocalDate.parse(dobInput);
+        } catch (Exception e) {
+            System.out.println("Invalid DOB format. Use yyyy-MM-dd.");
+            return;
+        }
+
+        // Generate account number: YYYYMMDD-DOBYYYYMMDD
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMMdd");
+        String accNum = today.format(fmt) + "-" + dob.format(fmt);
+
+        accounts.add(new Account(uname, pass, accNum, 0.0));
+        saveAccountsToFile();
+
+        System.out.println("Account created successfully.");
+        System.out.println("Your Account Number: " + accNum);
+    }
+
+    static void loginUser() {
+        System.out.print("Enter username: ");
+        String uname = sc.nextLine();
+        System.out.print("Enter password: ");
+        String pass = sc.nextLine();
+
+        for (Account acc : accounts) {
+            if (acc.username.equals(uname) && acc.password.equals(pass)) {
+                currentUser = acc;
+                System.out.println("Login successful!");
+                userMenu();
+                return;
+            }
+        }
+        System.out.println("Invalid username or password.");
+    }
+    static void userMenu() {
+        while (true) {
+            System.out.println("\n--- Banking Menu ---");
+            System.out.println("1. Deposit");
+            System.out.println("2. Withdraw");
+            System.out.println("3. Check Balance");
+            System.out.println("4. Account Details");
+            System.out.println("5. Logout");
+            System.out.print("Choose option: ");
+            int ch = sc.nextInt();
+
+            switch (ch) {
+                case 1 -> {
+                    System.out.print("Enter amount to deposit: ₹");
+                    double amt = sc.nextDouble();
+                    if (amt > 0) {
+                        currentUser.balance += amt;
+                        System.out.println("Deposited ₹" + amt);
+                        saveAccountsToFile();
+                    } else {
+                        System.out.println("Invalid amount!");
+                    }
+                }
+                case 2 -> {
+                    System.out.print("Enter amount to withdraw: ₹");
+                    double amt = sc.nextDouble();
+                    if (amt > 0 && currentUser.balance >= amt) {
+                        currentUser.balance -= amt;
+                        System.out.println("Withdrawn ₹" + amt);
+                        saveAccountsToFile();
+                    } else {
+                        System.out.println("Insufficient balance or invalid amount.");
+                    }
+                }
+                case 3 -> System.out.println("Your Balance: ₹" + currentUser.balance);
+                case 4 -> {
+                    System.out.println("Username: " + currentUser.username);
+                    System.out.println("Account Number: " + currentUser.accNumber);
+                    System.out.println("Balance: ₹" + currentUser.balance);
+                }
+                case 5 -> {
+                    System.out.println("Logged out.");
+                    currentUser = null;
+                    return;
+                }
+                default -> System.out.println("Invalid option.");
+            }
+        }
+    }
+
+    static void loadAccountsFromFile() {
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_NAME))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                String uname = parts[0], pass = parts[1], accNum = parts[2];
+                double bal = Double.parseDouble(parts[3]);
+                accounts.add(new Account(uname, pass, accNum, bal));
+            }
+        } catch (IOException e) {
+            System.out.println("No existing data found. Starting fresh.");
+        }
+    }
+
+    static void saveAccountsToFile() {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME))) {
+            for (Account acc : accounts) {
+                bw.write(acc.toFileString());
+                bw.newLine();
+            }
+        } catch (IOException e) {
+            System.out.println("Error saving data.");
+        }
+    }
+}
